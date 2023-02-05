@@ -1,26 +1,28 @@
 <template>
-  <img alt="Vue logo" src="./assets/logo.png">
-  <HelloWorld msg="Welcome to Your Vue.js App"/>
+    <el-container style="min-height: 600px; min-width: 800px;">
+      <el-aside class="line"  style="width: 60%;"><Submit/></el-aside>
+      <el-main class="line" style="padding-top: 0;"><Detail/></el-main>
+    </el-container>
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
-
+import Submit from './components/Submit.vue'
+import Detail from './components/Detail.vue'
 export default {
   name: 'App',
   components: {
-    HelloWorld
+    Submit,
+    Detail,
   }
 }
 </script>
 
 <style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
+.line {
+  border: 1px solid var(--el-border-color);
+  padding: 0px;
+  margin: 3px;
+  height:97vh;
+  box-shadow: var(--el-box-shadow-light);
 }
 </style>
