@@ -12,10 +12,10 @@
   >
     <div style="width: 95%;">
       <el-form-item label="Task name"  prop="TASK_NAME">
-        <el-input v-model="ruleForm.TASK_NAME"/>
+        <el-input v-model="ruleForm.TASK_NAME" placeholder="Please input"/>
       </el-form-item>
       <el-form-item label="Email"  prop="EMAIL">
-        <el-input v-model="ruleForm.EMAIL"/>
+        <el-input v-model="ruleForm.EMAIL"  placeholder="example@gmail.com"/>
       </el-form-item>
     </div>
     <el-form-item label="KMD width"  prop="KMD_WIDTH">
@@ -72,9 +72,12 @@
       <el-upload
         drag
         v-model:file-list="fileList"
-        action="http:///" 
+        action="http://localhost:28233/upload" 
         multiple
         style="width: 100%"
+        name="file"
+        accept=".xlsx,.xls"
+        :on-success="handleSuccess"
         >
         <el-icon class="el-icon--upload">
           <upload-filled />
@@ -88,12 +91,11 @@
             xls/xlsx files with a size less than 50mb.
           </div>
         </template>
-
       </el-upload>
     </el-form-item>
     <el-form-item style="width: 95%;">
         <el-button type="primary" @click="submitForm(ruleFormRef)" style="margin-left: 30%;" >Submit Task</el-button>
-        <el-button type="primary" @click="" style="margin-left: 10%;">Reset</el-button>
+        <el-button type="primary" @click="resetConfig()" style="margin-left: 10%;">Reset</el-button>
     </el-form-item>
 
   </el-form>
@@ -103,14 +105,31 @@
 
 <script lang="ts" setup>
 import { reactive, ref , nextTick} from 'vue'
-import type { FormInstance, FormRules, ElInput, ElMessage, ElMessageBox, UploadUserFile, UploadProps} from 'element-plus'
+
+// import { Vue, Component } from 'vue-property-decorator'
+// import { Getter, Action } from 'vuex-class'
+
+import type { FormInstance, FormRules, ElInput, UploadUserFile, UploadFile, UploadFiles} from 'element-plus'
+import {ElMessage} from 'element-plus';
 import { UploadFilled } from '@element-plus/icons-vue'
+import * as api from '../api'
+
+import {useStore} from '../store'
+const store=useStore();
+
+// store.setters.SET_TaskID('123123');
+// console.log('store.getters.getTaskID->',store.getters.getTaskID)
 
 const fileList = ref<UploadUserFile[]>([]);
-// const handleRemove: UploadProps['onRemove'] = (file, uploadFiles) => {
-//   console.log(file, uploadFiles)
-// }
 
+const handleSuccess = (response: any, uploadFile: UploadFile, uploadFiles: UploadFiles) => {
+  // console.log(response)
+  // if(response.code === '0' && response.msg === 'succ') {
+  //   console.log(uploadFile)
+  //   uploadFile
+  //   // uploadFile.subPath = response.file;
+  // }
+}
 // others
 const formSize = ref('default')
 const reminderFile = ref(false)
@@ -128,22 +147,49 @@ const checkFloat = (rule: any, value: any, callback: any) => {
       callback()
     }
   }, 1000)
-}
+};
+
 
 const submitForm = async (formEl: FormInstance | undefined)=>{
   if(!formEl) return
   await formEl.validate((valid, fields) => {
     if(valid) {
       if(fileList.value.length === 0) {
-        console.log('we need one file uploaded at least.')
-        console.log('won\'t submit!')
+        ElMessage.warning('we need one file uploaded at least.')
         reminderFile.value = true;
       } else {
-        console.log('submit!!!')
+        let files = [];
+        for(let idx in fileList.value) {
+          let response = fileList.value[idx].response;
+          let file = JSON.parse(JSON.stringify(response as object)).file
+          if (file) {
+            files.push(file)
+          }
+        }
+        let task = {
+          "task_name"      : ruleForm.TASK_NAME,
+          "email"          : ruleForm.EMAIL,
+          "intensity_list" : ruleForm.INTENSITY_LIST,
+          "kmd_width"      : ruleForm.KMD_WIDTH,
+          "mz_width"       : ruleForm.MZ_WIDTH,
+          "precision"      : ruleForm.PRECISION,
+          "precision_appear_in_all_samples": ruleForm.PRECISION_APPEAR_IN_ALL_SAMPLES,
+          "files"          : files,
+        }
+        // console.log("fileList.value:",task)
+        api.default.submitNewTask(task).then(res=>{
+          if(res.data.code === 0 && res.data.msg === "succ") {
+            ElMessage.success('Congrats, your submit is accepted successfully.')
+            resetConfig()
+            store.state.taskID = res.data.task_id
+          } else {
+            ElMessage.error('submit failed. return msg from server:' + res.data.msg)
+          }
+        })
       }
       
     } else {
-      console.log('error submit!', fields)
+      ElMessage.warning('form need to be completed.')
     }
   })
   
@@ -188,6 +234,17 @@ const rules = reactive<FormRules>({
   ],
 })
 
+const taskDefaultConfig = {
+      TASK_ID:"",
+      EMAIL:"",
+      TASK_NAME:"",
+      INTENSITY_LIST: ['5000', '10000', '20000','50000','100000','200000'],
+      KMD_WIDTH: 0.0095,
+      MZ_WIDTH: 0.01,
+      PRECISION: 2,
+      PRECISION_APPEAR_IN_ALL_SAMPLES: 3,
+}
+
 const ruleForm = reactive({
       TASK_ID:"",
       EMAIL:"",
@@ -199,7 +256,22 @@ const ruleForm = reactive({
       PRECISION_APPEAR_IN_ALL_SAMPLES: 3,
 })
 
-
+const resetConfig = ()=>{
+  ruleForm.TASK_ID = taskDefaultConfig.TASK_ID;
+  ruleForm.EMAIL = taskDefaultConfig.EMAIL;
+  ruleForm.TASK_NAME = taskDefaultConfig.TASK_NAME;
+  ruleForm.INTENSITY_LIST.length = 0;
+  for (let intensity of taskDefaultConfig.INTENSITY_LIST) {
+    ruleForm.INTENSITY_LIST.push(intensity)
+  }
+  ruleForm.KMD_WIDTH = taskDefaultConfig.KMD_WIDTH;
+  ruleForm.MZ_WIDTH = taskDefaultConfig.MZ_WIDTH;
+  ruleForm.TASK_ID = taskDefaultConfig.TASK_ID;
+  ruleForm.PRECISION = taskDefaultConfig.PRECISION;
+  ruleForm.PRECISION_APPEAR_IN_ALL_SAMPLES = taskDefaultConfig.PRECISION_APPEAR_IN_ALL_SAMPLES;
+  fileList.value.length = 0;
+  
+}
 
 // for tag editable
 const inputValue = ref('')
