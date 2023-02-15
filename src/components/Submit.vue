@@ -14,8 +14,13 @@
       <el-form-item label="Task name"  prop="TASK_NAME">
         <el-input v-model="ruleForm.TASK_NAME" placeholder="Please input"/>
       </el-form-item>
-      <el-form-item label="Email"  prop="EMAIL">
-        <el-input v-model="ruleForm.EMAIL"  placeholder="example@gmail.com"/>
+      <el-form-item label="Password"  prop="PASSWORD">
+        <el-input
+          v-model="ruleForm.EMAIL"
+          type="password"
+          placeholder="Please input password"
+          show-password
+        />
       </el-form-item>
     </div>
     <el-form-item label="KMD width"  prop="KMD_WIDTH">
@@ -72,7 +77,7 @@
       <el-upload
         drag
         v-model:file-list="fileList"
-        action="http://localhost:28233/upload" 
+        :action="uploadURL" 
         multiple
         style="width: 100%"
         name="file"
@@ -87,9 +92,18 @@
         </div>
         
         <template #tip>
-          <div class="el-upload__tip">
-            xls/xlsx files with a size less than 50mb.
+          <div class="el-upload__tip" style="display: flex;">
+            xls/xlsx files with a size less than 50mb. 
+            <el-link @click="clickTips" :underline="false" type="info" style="margin-left: auto;text-align: right;">What format file should I provide?</el-link>
           </div>
+          
+          <el-drawer
+            v-model="drawer"
+            size="50%"
+            title="What format file should I provide?"
+          >
+            <ExcelTemplate/>
+          </el-drawer>
         </template>
       </el-upload>
     </el-form-item>
@@ -105,7 +119,7 @@
 
 <script lang="ts" setup>
 import { reactive, ref , nextTick} from 'vue'
-
+import ExcelTemplate from './ExcelTemplate.vue';
 // import { Vue, Component } from 'vue-property-decorator'
 // import { Getter, Action } from 'vuex-class'
 
@@ -116,7 +130,10 @@ import * as api from '../api'
 
 import {useStore} from '../store'
 const store=useStore();
+const uploadURL = api.default.getUploadURL();
 
+const drawer = ref(false)
+const clickTips = ()=>{drawer.value = true}
 // store.setters.SET_TaskID('123123');
 // console.log('store.getters.getTaskID->',store.getters.getTaskID)
 
@@ -209,15 +226,12 @@ const rules = reactive<FormRules>({
         trigger: 'blur' 
     },
   ],
-  EMAIL: [
-    { 
-      required: true, 
-      message: 'Please input email address', 
-      trigger: 'blur' 
-    },
-    { 
-      type: 'email',
-      trigger: 'blur' 
+  PASSWORD: [
+    {
+        min: 0, 
+        max: 20, 
+        message: 'max length is 20', 
+        trigger: 'blur' 
     },
   ],
   KMD_WIDTH: [
@@ -240,7 +254,7 @@ const taskDefaultConfig = {
       TASK_NAME:"",
       INTENSITY_LIST: ['5000', '10000', '20000','50000','100000','200000'],
       KMD_WIDTH: 0.0095,
-      MZ_WIDTH: 0.01,
+      MZ_WIDTH: 0.1,
       PRECISION: 2,
       PRECISION_APPEAR_IN_ALL_SAMPLES: 3,
 }
@@ -251,7 +265,7 @@ const ruleForm = reactive({
       TASK_NAME:"",
       INTENSITY_LIST: ref(['5000', '10000', '20000','50000','100000','200000']),
       KMD_WIDTH: 0.0095,
-      MZ_WIDTH: 0.01,
+      MZ_WIDTH: 0.1,
       PRECISION: 2,
       PRECISION_APPEAR_IN_ALL_SAMPLES: 3,
 })

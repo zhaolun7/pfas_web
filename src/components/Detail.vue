@@ -1,7 +1,6 @@
 <template id="detail">
-<div>
+<div style="padding-left: 2%; padding-right: 2%;">
   <h3 style="text-align:center;">Query Task</h3>
-
 
   <el-select v-model="currentTask" value-key="id" class="m-2" placeholder="Select" @change="changeSelect">
     <el-option
@@ -12,7 +11,18 @@
     />
   </el-select>
 
+
+  <el-link 
+    v-if="result.msg === 'succ'"
+    :href="result.url" 
+    type="success" 
+    icon="Download"  
+    style="margin-left:10px"
+  >
+    Download
+  </el-link>
   <div v-if="details.length > 0">
+
     <div v-for="subtask in details" :key="subtask">
       <br/>
       <el-tag 
@@ -28,6 +38,7 @@
         :status="subtask.status>0?'exception':'success'"
         />
     </div>
+
   </div>
 </div>
 </template>
@@ -48,10 +59,16 @@ status: 0 normal 1 error
 import * as api from '../api/index'
 import {ElMessage} from 'element-plus';
 import {mapGetters} from "vuex";
+// import { Download } from '@element-plus/icons-vue';
 export default {
   name: 'detail',
   methods: {
+    urlencode (str) {
+      str = (str + '').toString();
+      return encodeURIComponent(str).replace(/!/g, '%21').replace(/'/g, '%27').replace(/\(/g, '%28'). replace(/\)/g, '%29').replace(/\*/g, '%2A').replace(/%20/g, '+');
+    },
     changeSelect(item) {
+      this.timerFlag = true;
       // console.log("item.id:",item.id);
       api.default.getTaskFiles(item.id).then(res=>{
         if(res.data.code === 0 && res.data.msg == "succ") {
@@ -60,6 +77,7 @@ export default {
           // we want to update details, not to replace it directly to avoid flashing.
           if(this.details.length != res.data.task.details.length) {
             this.details = res.data.task.details;
+            this.result = res.data.task.result;
           } else {
             for(let idx in this.details) {
               if(this.details[idx].name !== res.data.task.details[idx].name) {
@@ -68,8 +86,24 @@ export default {
               this.details[idx].step = res.data.task.details[idx].step
               this.details[idx].status = res.data.task.details[idx].status
             }
+            if(res.data.task.result ) {
+              if(this.result.msg != res.data.task.result.msg || this.result.file != res.data.task.result.file) {
+                this.result.msg = res.data.task.result.msg
+                this.result.file = res.data.task.result.file
+              }
+              if(this.result.msg === 'succ') {
+                this.timerFlag = false;
+                  let url = api.default.getResultFileURL(this.result.file);
+                  if(this.result.url !== url) {
+                    this.result.url = url;
+                  }
+              } else {
+                this.result.url = undefined;
+              }
+            } else {
+              this.result = {}
+            }
           }
-
         } else {
           ElMessage.error('query task failed')
         }
@@ -113,7 +147,10 @@ export default {
     this.loadRecentTasks()
 
     this.timer = setInterval(() => {
-       setTimeout(this.updateDetails, 0)
+      if(this.timerFlag) {
+        setTimeout(this.updateDetails, 0)
+      }
+       
    }, 1000*3)
   },
   data(){
@@ -121,7 +158,9 @@ export default {
       history_tasks: [],
       currentTask: {"id":"","task_name":"example"},
       details: [],
+      result:{},
       timer: null,
+      timerFlag: true,
     }
   }
 }
